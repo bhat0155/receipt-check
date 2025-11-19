@@ -1,6 +1,5 @@
 import express from 'express';
-// import cors from "cors";
-
+import cors from 'cors';
 import dotenv from "dotenv";
 
 //load the environment variables
@@ -16,8 +15,8 @@ const PORT = process.env.PORT || 4000;
 app.use(express.json());
 
 // talk to frontend , cors
-//TODO
-// app.use(cors())
+
+app.use(cors())
 
 // health check route
 
