@@ -22,5 +22,13 @@ export const receiptService = {
         return await prisma.receiptSession.delete({
             where: {id}
         })
+    },
+
+    // update session based on result of ocr and llms
+    async updateSession(id: string, data: any){
+        return await prisma.receiptSession.update({
+            where: {id},
+            data
+        })
     }
 }

@@ -1,5 +1,6 @@
 import {Request, Response} from "express";
 import { receiptService } from "../services/receipt.service";
+import { ocrService } from "../services/ocr.service";
 
 export const receiptController = {
     // handle create request
@@ -9,9 +10,21 @@ export const receiptController = {
                 res.status(400).json({error: "no file uploaded"});
                 return;
             }
+            // create session
             const session = await receiptService.createSession();
-            //TODO
-            // call OCR and LLM here
+            // run ocr
+            try{
+                const rawText  = await ocrService.extractText(req.file.buffer);
+                console.log(`OCR result is ${rawText}`)
+            }catch(err){
+                console.log("issue running OCR", err);
+                await receiptService.updateSession(session.id, {
+                    ocrError: "OCR Failed (stub)",
+                    purchasedItems: null
+                })
+                res.status(500).json("Issue running ocr");
+                return;
+            }
             console.log(`File recieved: ${req.file.originalname}`)
             res.status(201).json(session)
         }catch(err){
