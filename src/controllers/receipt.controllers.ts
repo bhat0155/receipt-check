@@ -5,7 +5,14 @@ export const receiptController = {
     // handle create request
     async create(req: Request, res: Response){
         try{
+            if(!req.file){
+                res.status(400).json({error: "no file uploaded"});
+                return;
+            }
             const session = await receiptService.createSession();
+            //TODO
+            // call OCR and LLM here
+            console.log(`File recieved: ${req.file.originalname}`)
             res.status(201).json(session)
         }catch(err){
             console.log(err);
