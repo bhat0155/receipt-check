@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from "dotenv";
-import router from './routes/receipt.routes';
+import receiptRouter from './routes/receipt.routes';
+import { recallRouter } from './routes/recalls.router';
 
 //load the environment variables
 dotenv.config();
@@ -19,7 +20,8 @@ app.use(express.json());
 
 app.use(cors())
 
-app.use("/api/receipts", router)
+app.use("/api/receipts", receiptRouter)
+app.use("/api/recalls", recallRouter)
 
 // health check route
 

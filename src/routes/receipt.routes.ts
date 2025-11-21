@@ -2,10 +2,10 @@ import { Router } from "express";
 import { receiptController } from "../controllers/receipt.controllers";
 import { upload } from "../middlewares/upload.middleware";
 
-const router = Router();
+const receiptRouter = Router();
 
-router.post("/", upload.single("file"), receiptController.create);
-router.get("/:id", receiptController.getOne);
-router.delete("/:id", receiptController.delete)
+receiptRouter.post("/", upload.single("file"), receiptController.create);
+receiptRouter.get("/:id", receiptController.getOne);
+receiptRouter.delete("/:id", receiptController.delete)
 
-export default router;
+export default receiptRouter;
