@@ -2,6 +2,7 @@ import {Request, Response} from "express";
 import { receiptService } from "../services/receipt.service";
 import { ocrService } from "../services/ocr.service";
 import { llmService } from "../services/llm.service";
+import { recallService } from "../services/recalls.service";
 
 export const receiptController = {
     // handle create request
@@ -79,6 +80,41 @@ export const receiptController = {
         }catch(err){
             console.log(err);
             res.status(500).json({error: "Failed to delete the session"})
+        }
+    },
+
+    // check recalls
+    async  checkRecalls(req: Request, res: Response){
+        try{
+            const {id}=req.params;
+        const session = await receiptService.getSession(id);
+            if(!session){
+                res.status(404).json({error: "Failed to extract the session"});
+                return;
+            }
+            // check if purchased session exist
+            if(!session.purchasedItems){
+                res.status(400).json({error: "no purchased Items"})
+                return
+            }
+            const items = session.purchasedItems as any
+
+            try{
+                const recalls = await recallService.fetchAndFilterRecalls();
+                const recallMatches = await llmService.compareWithRecall(items, recalls)
+
+                const updatedMatches = await receiptService.updateSession(id, {
+                    recallMatches: recallMatches,
+                    llmError: null
+                })
+                return res.status(200).json({message: "session updated", updatedMatches})
+            }catch(err){
+                console.log("error calling fetch on govt data for comparison")
+                return res.status(500).json({error: `error calling fetch on govt data for comparison: ${err}`})
+            }
+        }catch(err){
+            console.log(err);
+            res.status(500).json(`error: ${err}`)
         }
     }
 }

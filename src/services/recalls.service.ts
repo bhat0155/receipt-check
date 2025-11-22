@@ -33,7 +33,7 @@ export const recallService = {
     },
 
     // helper to store data inside cache
-    setRecallsInCache(data: RecallItem[]): void{ // Added type hint
+    setRecallsInCache(data: RecallItem[]): void{ 
         recallCache.set(RECALL_CACHE_KEY,data);
 
         console.log(`Cached successfully, expires in ${CACHE_TTL_SECONDS/3600} hours.`)
