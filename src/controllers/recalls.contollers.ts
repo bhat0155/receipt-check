@@ -7,7 +7,7 @@ export const recallsController = {
             const recalls = await recallService.fetchAndFilterRecalls();
             res.status(200).json(recalls)
         }catch(err){
-            console.log("Error fetching recalls");
+            console.log("Error fetching recalls", err);
             res.status(500).json({error: "Error fetching recalls"})
         }
     }
