@@ -1,8 +1,9 @@
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
-dotenv.config()
-
+dotenv.config({
+  path: new URL("./.env", import.meta.url).pathname,
+});
 async function runCleanup(){
     try{
         console.log("sarting cleanup job");
