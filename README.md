@@ -94,4 +94,6 @@ Errors follow the JSON `{ "error": "message" }` pattern with appropriate HTTP st
 
 ## 11. Author
 
-Built by **Ekam Bhatia** (`@ekambhatia`). Reach out for questions, contributions, or deployment support.
+Ekamsingh Bhatia — https://ekamsingh.ca
+
+
