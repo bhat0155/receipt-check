@@ -1,12 +1,12 @@
-# 1. Project Title
 
-**Receipt Recall API** – Grocery receipt ingestion + food recall intelligence service.
 
-# 2. Short Description
+# Receipt Recall API – Grocery receipt ingestion + food recall intelligence service.
+
+## 2. Short Description
 
 Receipt Recall ingests receipt images, parses line items with OCR + LLMs, then compares recent Canadian government recall notices to warn users about potentially unsafe purchases. The backend exposes REST endpoints for uploading receipts, managing parsing sessions, and querying cached recall data.
 
-# 3. Features
+## 3. Features
 
 - **Receipt Sessions** – Creates persistent `ReceiptSession` records in PostgreSQL to track OCR/LLM output and recall matches.
 - **Vision + LLM Pipeline** – Uses Google Cloud Vision for OCR and OpenAI GPT-4o mini for item extraction + recall comparisons.
@@ -15,14 +15,14 @@ Receipt Recall ingests receipt images, parses line items with OCR + LLMs, then c
 - **Automated Cleanup** – `cleanup.js` removes sessions older than five minutes to keep the database lean.
 - **Health Monitoring** – `/health` route confirms service availability for uptime checks.
 
-# 4. Tech Stack
+## 4. Tech Stack
 
 - Runtime: Node.js + TypeScript, Express 5, ts-node-dev.
 - Data & ORM: PostgreSQL, Prisma Client.
 - AI Services: Google Cloud Vision API, OpenAI Chat Completions.
 - Utilities: Multer, Node-Cache, dotenv, cors.
 
-# 5. Project Structure
+## 5. Project Structure
 
 ```
 reciept-recall/
@@ -40,7 +40,7 @@ reciept-recall/
 └── tsconfig.json           # TypeScript compiler config
 ```
 
-# 6. Environment Variables
+## 6. Environment Variables
 
 | Variable | Required | Description |
 | --- | --- | --- |
@@ -51,7 +51,7 @@ reciept-recall/
 
 > Create a `.env` file at the repo root; never commit production secrets.
 
-# 7. Local Setup Instructions
+## 7. Local Setup Instructions
 
 1. **Install dependencies** – `npm install`
 2. **Configure environment** – Copy `.env.example` (or `.env`) and set the variables listed above.
@@ -60,7 +60,7 @@ reciept-recall/
 5. **Start the dev server** – `npm run dev` (runs `ts-node-dev` with live reload).
 6. **Test the flow** – Use Postman/cURL to hit `/api/receipts` with a multipart `file` upload, then poll `/api/receipts/:id`.
 
-# 8. Run in Production
+## 8. Run in Production
 
 1. Build JS artifacts (optional): `tsc -p tsconfig.json` to emit to `dist/`.
 2. Run database migrations against the production DB.
@@ -69,7 +69,7 @@ reciept-recall/
 5. Schedule `node cleanup.js` periodically (e.g., cron) to purge stale sessions.
 6. Monitor logs for OCR/LLM errors and recall cache refresh messages.
 
-# 9. API Docs (Backend Only)
+## 9. API Docs 
 
 | Method | Endpoint | Description | Request Body | Success Response |
 | --- | --- | --- | --- | --- |
@@ -83,7 +83,7 @@ reciept-recall/
 Errors follow the JSON `{ "error": "message" }` pattern with appropriate HTTP status codes.
 
 
-# 10. Troubleshooting
+## 10. Troubleshooting
 
 - **OCR errors** – Ensure `GOOGLE_APPLICATION_CREDENTIALS` points to a valid Vision JSON key and the API is enabled.
 - **LLM failures** – Verify `OPEN_AI_API_KEY` has quota; the backend logs will surface OpenAI error messages.
@@ -92,6 +92,6 @@ Errors follow the JSON `{ "error": "message" }` pattern with appropriate HTTP st
 - **Cache not updating** – `node-cache` TTL is 6 hours; restart the server or call `recallService.setRecallsInCache()` manually if data is stale.
 
 
-# 11. Author
+## 11. Author
 
 Built by **Ekam Bhatia** (`@ekambhatia`). Reach out for questions, contributions, or deployment support.
