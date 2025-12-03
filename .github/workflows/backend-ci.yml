@@ -11,8 +11,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # get code into github runner
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Say hello
-        run: echo "GitHub Actions is working for the backend repo!"
+      # install node
+      - name: setup node js
+        uses: actions/setup-node@v4 
+        with: 
+          node-version: "20.x"
+          cache: "npm"
+
+      # install dependencies in clean ci mode
+      - name: install the dependencies
+        run: npm ci
+
+      # run unit test
+      - name: run test
+        run: npm test
+
+      # check typescript build works
+      - name: build typescript
+        run: npm run build
