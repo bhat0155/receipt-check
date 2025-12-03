@@ -6,4 +6,6 @@ module.exports = {
   testMatch: ["**/__tests__/**/*.test.ts"],
   // Ignore built files
   modulePathIgnorePatterns: ["<rootDir>/dist/"],
+  // Watchman can be blocked in some environments; disable to avoid startup failures
+  watchman: false,
 };
