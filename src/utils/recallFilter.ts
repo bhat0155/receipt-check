@@ -31,6 +31,7 @@ const date = dateStr
 
     // sort newest to oldest
     recent.sort((a,b)=> b.date.getTime()-a.date.getTime());
+    throw new Error("hiii")
 
     // cap to maxItems
    return recent.slice(0, maxItem)
