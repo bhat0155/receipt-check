@@ -1,4 +1,5 @@
 import NodeCache from "node-cache";
+import { transformAndFilterRecalls } from "../utils/recallFilter";
 
 
 const CACHE_TTL_SECONDS = 6*60*60 // 6 hours
@@ -54,28 +55,7 @@ export const recallService = {
        
        const apiData: any[] = await response.json();
        
-       const rawRecalls = apiData; 
-
-       // 5 day cutoff window
-       const cutOffDate = new Date();
-       cutOffDate.setDate(cutOffDate.getDate()-5);
-       
-       console.log(`filtering for days newer than ${cutOffDate.toLocaleDateString()}`)
-
-       // map, filter, sort and slice
-       const filteredRecalls = rawRecalls.map((item: any)=>{
-        return{
-            id: item.NID, 
-            title: item.Title,
-            category: item.Category, 
-            date: new Date(item["Last updated"]),
-            raw: item
-        } as RecallItem
-       }).filter((item: RecallItem)=>{
-        const isRecent = item.date >= cutOffDate;
-
-        return isRecent;
-       }).sort((a: RecallItem, b:RecallItem)=> b.date.getTime()-a.date.getTime()).slice(0,40)
+       const filteredRecalls = transformAndFilterRecalls(apiData, 6, 40);
 
        this.setRecallsInCache(filteredRecalls);
        return filteredRecalls;

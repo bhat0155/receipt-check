@@ -12,11 +12,13 @@ export function transformAndFilterRecalls(rawRecalls: any[], daysWindow: number 
     // map raw data to recallItem interface
     const mapped: RecallItem[] = rawRecalls.map((item: any)=>{
         const id = String(item.NID ?? "" );
-        const title = String(item.title ?? "")
-        const category = String(item.category ?? "");
+        const title = String(item.Title ?? "")
+        const category = String(item.Category ?? "");
 
-        const dateStr = item["Last updated"];
-        const date = dateStr ? new Date(dateStr) : new Date(0);
+     const dateStr = (item["Last updated"] ?? item["Last Updated"] ?? item.lastUpdated ?? "").trim();
+const date = dateStr
+  ? new Date(dateStr.includes("T") ? dateStr : `${dateStr}T00:00:00Z`)
+  : new Date(0);
 
         return {
             id,title,category,date, raw: item
