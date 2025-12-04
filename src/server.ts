@@ -30,5 +30,5 @@ app.get("/health", (req, res)=>{
 })
 
 app.listen(PORT, ()=>{
-    console.log(`The app is running on the port ${PORT}`)
+    console.log(`The app is running on the port ${PORT}, uses CI/CD pipelines for deployment`)
 })

@@ -55,7 +55,7 @@ export const recallService = {
        
        const apiData: any[] = await response.json();
        
-       const filteredRecalls = transformAndFilterRecalls(apiData, 6, 40);
+       const filteredRecalls = transformAndFilterRecalls(apiData, 5, 40);
 
        this.setRecallsInCache(filteredRecalls);
        return filteredRecalls;
