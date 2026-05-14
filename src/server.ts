@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from "dotenv";
 import receiptRouter from './routes/receipt.routes';
 import { recallRouter } from './routes/recalls.router';
+import productCheckRouter from './routes/productCheck.router';
 
 //load the environment variables
 dotenv.config();
@@ -22,7 +23,7 @@ app.use(cors())
 
 app.use("/api/receipts", receiptRouter)
 app.use("/api/recalls", recallRouter)
-
+app.use("/api/product-check", productCheckRouter)
 // health check route
 
 app.get("/health", (req, res)=>{
