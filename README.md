@@ -10,6 +10,7 @@ Receipt Recall ingests receipt images, parses line items with OCR + LLMs, then c
 
 - **Receipt Sessions** – Creates persistent `ReceiptSession` records in PostgreSQL to track OCR/LLM output and recall matches.
 - **Vision + LLM Pipeline** – Uses Google Cloud Vision for OCR and OpenAI GPT-4o mini for item extraction + recall comparisons.
+- **Product Safety Check** – Single-request endpoint: upload a product image, get an instant safe/unsafe verdict against active Health Canada recalls. No session or DB write needed.
 - **Recall Cache** – Fetches Health Canada recall JSON once every six hours via `node-cache` for fast reuse.
 - **File Upload Middleware** – Accepts image uploads (10 MB max) via Multer’s in-memory storage.
 - **Automated Cleanup** – `cleanup.js` removes sessions older than five minutes to keep the database lean.
@@ -78,6 +79,7 @@ reciept-recall/
 | `DELETE` | `/api/receipts/:id` | Delete a receipt session. | n/a | `200` `{ "message": "Deleted the receipt session" }`. |
 | `POST` | `/api/receipts/:id/check-recalls` | Compare parsed items with cached recalls, update session. | JSON: none (session must already have `purchasedItems`). | `200` `{ "message": "session updated", "updatedMatches": { ... } }`. |
 | `GET` | `/api/recalls/sample` | Return the latest filtered recalls (≤40 recent items). | n/a | `200` array of recall objects (`id`, `title`, `category`, `date`). |
+| `POST` | `/api/product-check` | Identify a product from image and check against active recalls. | `multipart/form-data` with `file` (image). | `200` `{ product, verdict, matches }`. |
 | `GET` | `/health` | Service health check. | n/a | `200 { "status": "ok", "message": "The server is running" }`. |
 
 Errors follow the JSON `{ "error": "message" }` pattern with appropriate HTTP status codes.
