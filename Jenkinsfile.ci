@@ -46,6 +46,7 @@ pipeline {
         }
 
         // bundle only what Azure needs to run the app (no source .ts files)
+        // node_modules excluded — Azure installs them via SCM_DO_BUILD_DURING_DEPLOYMENT
         stage('Package Artifact') {
             steps {
                 sh '''

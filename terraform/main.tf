@@ -43,8 +43,8 @@ resource "azurerm_linux_web_app" "main" {
       app_command_line = "node dist/server.js"
   }
    app_settings = {
-      "WEBSITE_RUN_FROM_PACKAGE" = "1"
-      "NODE_ENV"                 = "production"
+      "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
+      "NODE_ENV"                       = "production"
     }
 }
 
