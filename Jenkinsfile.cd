@@ -14,7 +14,7 @@ pipeline {
         stage('Retrieve Artifact') {
             steps {
                 copyArtifacts(
-                    projectName: 'receipt-recall-CI',
+                    projectName: 'ReceiptCI',
                     filter: "${ARTIFACT_PATTERN}",
                     selector: lastSuccessful(),
                     flatten: true
