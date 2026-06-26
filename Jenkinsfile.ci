@@ -48,8 +48,14 @@ pipeline {
         // bundle everything Azure needs — node_modules with prod deps only keeps zip lean
         stage('Package Artifact') {
             steps {
-                // strip devDependencies before zipping — only ship what the app needs to run
+                // generate prisma engines for both ARM64 (Jenkins/Mac) and x86_64 (Azure)
+                sh 'npx prisma generate'
+                // back up the multi-target engines before npm ci --omit=dev wipes node_modules
+                sh 'cp -r node_modules/.prisma /tmp/prisma-generated'
+                // reinstall prod deps only — this wipes node_modules including .prisma
                 sh 'npm ci --omit=dev'
+                // restore the multi-target engines that npm ci removed
+                sh 'cp -r /tmp/prisma-generated node_modules/.prisma'
                 sh '''
                     zip -r ${ARTIFACT_NAME} \
                         dist/ \
