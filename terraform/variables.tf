@@ -29,3 +29,7 @@ variable "postgres_admin_password"{
 variable "storage_account_name" {
 default = "recallartifacts"
 }
+
+variable "local_jenkins_ip" {
+  description = "Public IP of the machine running Jenkins locally — allows Prisma migrations to reach Azure PostgreSQL"
+}

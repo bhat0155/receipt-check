@@ -77,6 +77,14 @@ resource "azurerm_linux_web_app" "main" {
     end_ip_address   = "0.0.0.0"
   }
 
+  # allows local Jenkins to run Prisma migrations against Azure PostgreSQL
+  resource "azurerm_postgresql_flexible_server_firewall_rule" "local_jenkins" {
+    name             = "AllowLocalJenkins"
+    server_id        = azurerm_postgresql_flexible_server.main.id
+    start_ip_address = var.local_jenkins_ip
+    end_ip_address   = var.local_jenkins_ip
+  }
+
   # storage account + container
   resource "azurerm_storage_account" "artifacts" {
   name                     = var.storage_account_name
