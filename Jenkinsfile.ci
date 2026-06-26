@@ -1,70 +1,78 @@
 pipeline {
-      agent any
+    agent any
 
-      tools {
-          nodejs 'node-22'
-      }
+    // use the Node 22 installation configured in Jenkins → Tools
+    tools {
+        nodejs 'node-22'
+    }
 
-      environment {
-          ARTIFACT_NAME = "receipt-recall-${env.BUILD_NUMBER}.zip"
-      }
+    // artifact name includes build number so each build produces a unique zip
+    environment {
+        ARTIFACT_NAME = "receipt-recall-${env.BUILD_NUMBER}.zip"
+    }
 
-      stages {
-          stage('Checkout') {
-              steps {
-                  checkout scm
-              }
-          }
+    stages {
+        // pull the code from the branch Jenkins is tracking
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
 
-          stage('Install Dependencies') {
-              steps {
-                  sh 'npm ci'
-              }
-          }
+        // npm ci is stricter than npm install — uses exact versions from package-lock.json
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm ci'
+            }
+        }
 
-          stage('Build') {
-              steps {
-                  sh 'npm run build'
-              }
-          }
+        // compile TypeScript to JavaScript in dist/
+        stage('Build') {
+            steps {
+                sh 'npm run build'
+            }
+        }
 
-          stage('Test') {
-              steps {
-                  sh 'npm test'
-              }
-              post {
-                  always {
-                      echo 'Tests complete'
-                  }
-              }
-          }
+        // run unit tests — pipeline fails here if any test fails
+        stage('Test') {
+            steps {
+                sh 'npm test'
+            }
+            post {
+                always {
+                    echo 'Tests complete'
+                }
+            }
+        }
 
-          stage('Package Artifact') {
-              steps {
-                  sh '''
-                      zip -r ${ARTIFACT_NAME} \
-                          dist/ \
-                          package.json \
-                          package-lock.json \
-                          prisma/ \
-                          --exclude "*.ts"
-                  '''
-              }
-          }
+        // bundle only what Azure needs to run the app (no source .ts files)
+        stage('Package Artifact') {
+            steps {
+                sh '''
+                    zip -r ${ARTIFACT_NAME} \
+                        dist/ \
+                        package.json \
+                        package-lock.json \
+                        prisma/ \
+                        --exclude "*.ts"
+                '''
+            }
+        }
 
-          stage('Archive Artifact') {
-              steps {
-                  archiveArtifacts artifacts: "${ARTIFACT_NAME}", fingerprint: true
-              }
-          }
-      }
+        // store the zip inside Jenkins so the CD pipeline can retrieve it
+        stage('Archive Artifact') {
+            steps {
+                archiveArtifacts artifacts: "${ARTIFACT_NAME}", fingerprint: true
+            }
+        }
+    }
 
-      post {
-          success {
-              echo "CI passed. Artifact: ${ARTIFACT_NAME}"
-          }
-          failure {
-              echo 'CI failed — CD pipeline will not trigger.'
-          }
-      }
-  }
+    post {
+        success {
+            echo "CI passed. Artifact: ${ARTIFACT_NAME}"
+        }
+        failure {
+            echo 'CI failed — CD pipeline will not trigger.'
+        }
+    }
+}

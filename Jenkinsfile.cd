@@ -1,0 +1,110 @@
+pipeline {
+    agent any
+
+    // target Azure resources and app URL — change here if names ever change
+    environment {
+        AZURE_WEBAPP_NAME    = 'receipt-recall-api'
+        AZURE_RESOURCE_GROUP = 'receipt-recall-rg'
+        HEALTH_CHECK_URL     = "https://receipt-recall-api.azurewebsites.net/health"
+        ARTIFACT_PATTERN     = 'receipt-recall-*.zip'
+    }
+
+    stages {
+        // pull the latest successful zip from the CI pipeline — no rebuild needed
+        stage('Retrieve Artifact') {
+            steps {
+                copyArtifacts(
+                    projectName: 'receipt-recall-CI',
+                    filter: "${ARTIFACT_PATTERN}",
+                    selector: lastSuccessful(),
+                    flatten: true
+                )
+                sh 'ls -lh *.zip'
+            }
+        }
+
+        // push secrets into Azure app settings so the app can read them via process.env
+        stage('Set App Settings') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'database-url', variable: 'DATABASE_URL'),
+                    string(credentialsId: 'openai-api-key', variable: 'OPENAI_API_KEY'),
+                    azureServicePrincipal('azure-service-principal')
+                ]) {
+                    sh '''
+                        az login --service-principal \
+                            --username $AZURE_CLIENT_ID \
+                            --password $AZURE_CLIENT_SECRET \
+                            --tenant $AZURE_TENANT_ID
+
+                        az webapp config appsettings set \
+                            --name $AZURE_WEBAPP_NAME \
+                            --resource-group $AZURE_RESOURCE_GROUP \
+                            --settings \
+                                DATABASE_URL="$DATABASE_URL" \
+                                OPENAI_API_KEY="$OPENAI_API_KEY" \
+                                NODE_ENV="production"
+                    '''
+                }
+            }
+        }
+
+        // run pending migrations before deploying — new code may depend on schema changes
+        stage('Run DB Migrations') {
+            steps {
+                withCredentials([string(credentialsId: 'database-url', variable: 'DATABASE_URL')]) {
+                    sh '''
+                        export DATABASE_URL="$DATABASE_URL"
+                        npx prisma migrate deploy
+                    '''
+                }
+            }
+        }
+
+        // upload the zip to Azure — Azure extracts and runs it directly
+        stage('Deploy to Azure Web App') {
+            steps {
+                withCredentials([azureServicePrincipal('azure-service-principal')]) {
+                    sh '''
+                        ARTIFACT_FILE=$(ls receipt-recall-*.zip | head -1)
+
+                        az login --service-principal \
+                            --username $AZURE_CLIENT_ID \
+                            --password $AZURE_CLIENT_SECRET \
+                            --tenant $AZURE_TENANT_ID
+
+                        az webapp deploy \
+                            --name $AZURE_WEBAPP_NAME \
+                            --resource-group $AZURE_RESOURCE_GROUP \
+                            --src-path "$ARTIFACT_FILE" \
+                            --type zip
+                    '''
+                }
+            }
+        }
+
+        // wait 30s for Azure to restart the app, then verify /health returns 200
+        stage('Health Check') {
+            steps {
+                sh 'sleep 30'
+                script {
+                    def response = httpRequest(
+                        url: env.HEALTH_CHECK_URL,
+                        validResponseCodes: '200',
+                        timeout: 30
+                    )
+                    echo "Health check response: ${response.status} — ${response.content}"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Deployment successful. App live at: ${HEALTH_CHECK_URL}"
+        }
+        failure {
+            echo 'Deployment failed. Review logs above.'
+        }
+    }
+}
