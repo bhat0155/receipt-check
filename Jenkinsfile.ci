@@ -45,13 +45,15 @@ pipeline {
             }
         }
 
-        // bundle only what Azure needs to run the app (no source .ts files)
-        // node_modules excluded — Azure installs them via SCM_DO_BUILD_DURING_DEPLOYMENT
+        // bundle everything Azure needs — node_modules with prod deps only keeps zip lean
         stage('Package Artifact') {
             steps {
+                // strip devDependencies before zipping — only ship what the app needs to run
+                sh 'npm ci --omit=dev'
                 sh '''
                     zip -r ${ARTIFACT_NAME} \
                         dist/ \
+                        node_modules/ \
                         package.json \
                         package-lock.json \
                         prisma/ \
