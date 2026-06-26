@@ -18,6 +18,8 @@ pipeline {
         // pull the latest successful zip from the CI pipeline — no rebuild needed
         stage('Retrieve Artifact') {
             steps {
+                // clean workspace so old artifacts from previous runs don't interfere
+                cleanWs()
                 copyArtifacts(
                     projectName: 'ReceiptCI',
                     filter: "${ARTIFACT_PATTERN}",
@@ -71,7 +73,7 @@ pipeline {
             steps {
                 withCredentials([azureServicePrincipal('azure-service-principal')]) {
                     sh '''
-                        ARTIFACT_FILE=$(ls receipt-recall-*.zip | head -1)
+                        ARTIFACT_FILE=$(ls -t receipt-recall-*.zip | head -1)
 
                         az login --service-principal \
                             --username $AZURE_CLIENT_ID \
