@@ -1,0 +1,70 @@
+pipeline {
+      agent any
+
+      tools {
+          nodejs 'node-22'
+      }
+
+      environment {
+          ARTIFACT_NAME = "receipt-recall-${env.BUILD_NUMBER}.zip"
+      }
+
+      stages {
+          stage('Checkout') {
+              steps {
+                  checkout scm
+              }
+          }
+
+          stage('Install Dependencies') {
+              steps {
+                  sh 'npm ci'
+              }
+          }
+
+          stage('Build') {
+              steps {
+                  sh 'npm run build'
+              }
+          }
+
+          stage('Test') {
+              steps {
+                  sh 'npm test'
+              }
+              post {
+                  always {
+                      echo 'Tests complete'
+                  }
+              }
+          }
+
+          stage('Package Artifact') {
+              steps {
+                  sh '''
+                      zip -r ${ARTIFACT_NAME} \
+                          dist/ \
+                          package.json \
+                          package-lock.json \
+                          prisma/ \
+                          --exclude "*.ts"
+                  '''
+              }
+          }
+
+          stage('Archive Artifact') {
+              steps {
+                  archiveArtifacts artifacts: "${ARTIFACT_NAME}", fingerprint: true
+              }
+          }
+      }
+
+      post {
+          success {
+              echo "CI passed. Artifact: ${ARTIFACT_NAME}"
+          }
+          failure {
+              echo 'CI failed — CD pipeline will not trigger.'
+          }
+      }
+  }
