@@ -5,3 +5,14 @@ google-credentials.json
 dist
 interview.md
 PRODUCT_CHECK_ROADMAP.md
+roadmap-azure.md
+
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfvars
+terraform/*.tfstate
+terraform/*.tfstate.backup
+
+# Build artifacts
+*.zip
