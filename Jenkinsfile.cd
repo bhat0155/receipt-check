@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    // needed for npx prisma migrate deploy in the DB migration stage
+    tools {
+        nodejs 'node-22'
+    }
+
     // target Azure resources and app URL — change here if names ever change
     environment {
         AZURE_WEBAPP_NAME    = 'receipt-recall-api'
