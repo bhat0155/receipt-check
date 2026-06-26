@@ -93,7 +93,7 @@ pipeline {
         // wait 30s for Azure to restart the app, then verify /health returns 200
         stage('Health Check') {
             steps {
-                sh 'sleep 30'
+                sh 'sleep 90'
                 script {
                     def response = httpRequest(
                         url: env.HEALTH_CHECK_URL,
