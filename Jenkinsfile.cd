@@ -18,8 +18,8 @@ pipeline {
         // pull the latest successful zip from the CI pipeline — no rebuild needed
         stage('Retrieve Artifact') {
             steps {
-                // clean workspace so old artifacts from previous runs don't interfere
-                cleanWs()
+                // remove old zips only — cleanWs() would also delete prisma/schema.prisma
+                sh 'rm -f receipt-recall-*.zip'
                 copyArtifacts(
                     projectName: 'ReceiptCI',
                     filter: "${ARTIFACT_PATTERN}",
