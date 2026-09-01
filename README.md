@@ -50,7 +50,7 @@ You upload a photo of a receipt (or a single product). The service runs OCR, ext
 
 Before you start, make sure you have:
 
-- Node.js 20 or later and npm (CI runs on Node 20.x and 22.x — see [open questions](#open-questions))
+- Node.js 20 or later and npm
 - A running PostgreSQL instance
 - A Google Cloud project with the Vision API enabled and a service account JSON key
 - An OpenAI API key with access to `gpt-4o-mini`
@@ -196,8 +196,6 @@ npm start
 
 Then schedule `node cleanup.js` to run periodically (for example, via cron) to purge stale sessions.
 
-> This repo also contains a `terraform/` directory targeting Azure. See [open questions](#open-questions) — it's unclear whether that infrastructure is the current deployment target or work in progress.
-
 ## Troubleshooting
 
 | Symptom | Likely cause / fix |
@@ -219,10 +217,3 @@ Issues and pull requests are welcome. Before opening a PR, run `npm test` and `n
 ## Contact
 
 [Ekamsingh Bhatia](https://ekamsingh.ca)
-
-## Open Questions
-
-- **Node.js version**: `backend-ci.yml` tests against Node 20.x, `deploy.yml` deploys with Node 22. There's no `engines` field in `package.json`. Which version should contributors target?
-- **Deployment target**: `deploy.yml` deploys to an EC2 instance via SSH, but the repo also contains a `terraform/` directory provisioning Azure resources, and a branch named `azure-jenkins-cicd`. Is the project migrating from EC2 to Azure, and is Jenkins expected to replace the GitHub Actions deploy workflow?
-- **License**: `package.json` lists `ISC`, but no `LICENSE` file exists. Is `ISC` the intended license?
-- **Package name vs. repo name**: `package.json` names the project `reciept-recall` (and the local folder matches), while the GitHub repository is `receipt-check`. Should these be aligned?
