@@ -212,7 +212,7 @@ Issues and pull requests are welcome. Before opening a PR, run `npm test` and `n
 
 ## License
 
-`package.json` declares the `ISC` license, but the repository does not currently include a `LICENSE` file. Add one before treating this project as licensed for external use.
+MIT — see [LICENSE](LICENSE).
 
 ## Contact
 
