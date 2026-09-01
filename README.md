@@ -1,101 +1,228 @@
+# Receipt Recall API
 
+[![Backend CI](https://github.com/bhat0155/receipt-check/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/bhat0155/receipt-check/actions/workflows/backend-ci.yml)
 
-# Receipt Recall API – Grocery receipt ingestion + food recall intelligence service.
+A Node.js/TypeScript backend that reads grocery receipts and warns you if anything you bought has been recalled by Health Canada.
 
-## 2. Short Description
+You upload a photo of a receipt (or a single product). The service runs OCR, extracts line items with an LLM, and cross-references them against cached Health Canada recall notices.
 
-Receipt Recall ingests receipt images, parses line items with OCR + LLMs, then compares recent Canadian government recall notices to warn users about potentially unsafe purchases. The backend exposes REST endpoints for uploading receipts, managing parsing sessions, and querying cached recall data.
+## Table of Contents
 
-## 3. Features
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [API Reference](#api-reference)
+- [Project Structure](#project-structure)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
 
-- **Receipt Sessions** – Creates persistent `ReceiptSession` records in PostgreSQL to track OCR/LLM output and recall matches.
-- **Vision + LLM Pipeline** – Uses Google Cloud Vision for OCR and OpenAI GPT-4o mini for item extraction + recall comparisons.
-- **Product Safety Check** – Single-request endpoint: upload a product image, get an instant safe/unsafe verdict against active Health Canada recalls. No session or DB write needed.
-- **Recall Cache** – Fetches Health Canada recall JSON once every six hours via `node-cache` for fast reuse.
-- **File Upload Middleware** – Accepts image uploads (10 MB max) via Multer’s in-memory storage.
-- **Automated Cleanup** – `cleanup.js` removes sessions older than five minutes to keep the database lean.
-- **Health Monitoring** – `/health` route confirms service availability for uptime checks.
+## Features
 
-## 4. Tech Stack
+- **Receipt sessions** — Persists each upload as a `ReceiptSession` row in PostgreSQL, tracking OCR/LLM output and recall matches.
+- **OCR + LLM pipeline** — Extracts text from a receipt image with Google Cloud Vision, then parses line items with OpenAI's `gpt-4o-mini`.
+- **Product safety check** — A single-request endpoint that identifies a product from a photo and returns an instant safe/unsafe verdict, with no session or database write.
+- **Recall cache** — Fetches the Health Canada recall feed and caches it in memory for 6 hours to avoid refetching on every request.
+- **File upload handling** — Accepts image uploads up to 10 MB via Multer, stored in memory.
+- **Session cleanup** — `cleanup.js` deletes sessions older than 5 minutes to keep the database small.
+- **Health check** — `GET /health` reports service availability for uptime monitoring.
 
-- Runtime: Node.js + TypeScript, Express 5, ts-node-dev.
-- Data & ORM: PostgreSQL, Prisma Client.
-- AI Services: Google Cloud Vision API, OpenAI Chat Completions.
-- Utilities: Multer, Node-Cache, dotenv, cors.
+## Tech Stack
 
-## 5. Project Structure
+| Layer | Technology |
+| --- | --- |
+| Runtime | Node.js, TypeScript, `ts-node-dev` |
+| Web framework | Express 5 |
+| Database / ORM | PostgreSQL, Prisma Client |
+| OCR | Google Cloud Vision API |
+| LLM | OpenAI Chat Completions (`gpt-4o-mini`) |
+| Uploads | Multer (in-memory storage) |
+| Caching | `node-cache` |
+| Testing | Jest, ts-jest, Supertest |
+
+## Prerequisites
+
+Before you start, make sure you have:
+
+- Node.js 20 or later and npm (CI runs on Node 20.x and 22.x — see [open questions](#open-questions))
+- A running PostgreSQL instance
+- A Google Cloud project with the Vision API enabled and a service account JSON key
+- An OpenAI API key with access to `gpt-4o-mini`
+
+## Installation
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/bhat0155/receipt-check.git
+   cd receipt-check
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Create a `.env` file in the repo root with the variables listed in [Configuration](#configuration).
+
+4. Push the Prisma schema to your database and generate the client:
+
+   ```bash
+   npx prisma db push
+   npx prisma generate
+   ```
+
+5. Start the development server:
+
+   ```bash
+   npm run dev
+   ```
+
+The server listens on `http://localhost:4000` by default (or the port set in `PORT`).
+
+## Quick Start
+
+Confirm the server is running:
+
+```bash
+curl http://localhost:4000/health
+```
+
+Upload a receipt image and create a session:
+
+```bash
+curl -X POST http://localhost:4000/api/receipts \
+  -F "file=@receipt.jpg"
+```
+
+The response includes the session `id`. Fetch it later:
+
+```bash
+curl http://localhost:4000/api/receipts/<id>
+```
+
+Compare the parsed items against current recalls:
+
+```bash
+curl -X POST http://localhost:4000/api/receipts/<id>/check-recalls
+```
+
+Or check a single product photo directly, without creating a session:
+
+```bash
+curl -X POST http://localhost:4000/api/product-check \
+  -F "file=@product.jpg"
+```
+
+## Configuration
+
+Set these variables in a `.env` file at the repo root. Never commit real credentials.
+
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `PORT` | No | `4000` | Port the Express server listens on. |
+| `DATABASE_URL` | Yes | — | PostgreSQL connection string used by Prisma. |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Yes | — | Path to the Google Cloud service account JSON key with Vision API access. |
+| `OPEN_AI_API_KEY` | Yes | — | OpenAI API key with access to `gpt-4o-mini`. Note the variable name in this codebase is `OPEN_AI_API_KEY`, not OpenAI's more common `OPENAI_API_KEY`. |
+
+## API Reference
+
+All responses are JSON. Errors follow the shape `{ "error": "message" }` with an appropriate HTTP status code.
+
+| Method | Endpoint | Request body | Success response |
+| --- | --- | --- | --- |
+| `GET` | `/health` | — | `200` — `{ "status": "ok", "message": "The server is running" }` |
+| `POST` | `/api/receipts` | `multipart/form-data` with a `file` field (image) | `201` — the created session, including `id` and timestamps |
+| `GET` | `/api/receipts/:id` | — | `200` — the session, including `purchasedItems`, `recallMatches`, and any error fields |
+| `DELETE` | `/api/receipts/:id` | — | `200` — `"Deleted the receipt session"` |
+| `POST` | `/api/receipts/:id/check-recalls` | — (the session must already have `purchasedItems`) | `200` — `{ "message": "session updated", "updatedMatches": { ... } }` |
+| `GET` | `/api/recalls/sample` | — | `200` — an array of up to 40 recent recall objects (`id`, `title`, `category`, `date`) |
+| `POST` | `/api/product-check` | `multipart/form-data` with a `file` field (image) | `200` — `{ "product": { ... }, "verdict": "safe" \| "unsafe", "matches": [ ... ] }` |
+
+## Project Structure
 
 ```
-reciept-recall/
+receipt-check/
 ├── src/
-│   ├── controllers/        # Request handlers (receipts, recalls)
-│   ├── routes/             # Express routers mounted under /api
-│   ├── services/           # OCR, LLM, recall, and receipt persistence logic
-│   ├── middlewares/        # Upload middleware using Multer
-│   └── server.ts           # Express bootstrap + health route
+│   ├── controllers/    # Request handlers for receipts, recalls, and product checks
+│   ├── routes/         # Express routers mounted under /api
+│   ├── services/       # OCR, LLM, recall-fetching, and Prisma persistence logic
+│   ├── middlewares/     # Multer upload configuration
+│   ├── utils/           # Recall filtering and date-window helpers
+│   ├── __tests__/       # Jest test suites
+│   └── server.ts        # Express app bootstrap and /health route
 ├── prisma/
-│   ├── schema.prisma       # ReceiptSession model + datasource
-│   └── migrations/         # Migration metadata (if any)
-├── cleanup.js              # Script to purge expired sessions
-├── package.json            # Scripts + dependency manifest
-└── tsconfig.json           # TypeScript compiler config
+│   ├── schema.prisma    # ReceiptSession model and datasource
+│   └── migrations/      # Prisma migration history
+├── cleanup.js           # Standalone script that purges expired sessions
+├── jest.config.cjs      # Jest configuration
+├── package.json         # Scripts and dependencies
+└── tsconfig.json        # TypeScript compiler configuration
 ```
 
-## 6. Environment Variables
+## Testing
 
-| Variable | Required | Description |
-| --- | --- | --- |
-| `PORT` | Optional | Port for Express server (defaults to 4000). |
-| `DATABASE_URL` | ✅ | PostgreSQL connection string used by Prisma. |
-| `GOOGLE_APPLICATION_CREDENTIALS` | ✅ | Path to Google Vision JSON credentials file. |
-| `OPEN_AI_API_KEY` | ✅ | OpenAI API key with access to GPT-4o mini. |
+Run the test suite with Jest:
 
-> Create a `.env` file at the repo root; never commit production secrets.
+```bash
+npm test
+```
 
-## 7. Local Setup Instructions
+Run tests in watch mode while developing:
 
-1. **Install dependencies** – `npm install`
-2. **Configure environment** – Copy `.env.example` (or `.env`) and set the variables listed above.
-3. **Prepare database** – Ensure PostgreSQL is running, then run `npx prisma db push` (or `prisma migrate dev`) to create the `reciept_sessions` table.
-4. **Generate Prisma Client** – `npx prisma generate`
-5. **Start the dev server** – `npm run dev` (runs `ts-node-dev` with live reload).
-6. **Test the flow** – Use Postman/cURL to hit `/api/receipts` with a multipart `file` upload, then poll `/api/receipts/:id`.
+```bash
+npm run test-watch
+```
 
-## 8. Run in Production
+## Deployment
 
-1. Build JS artifacts (optional): `tsc -p tsconfig.json` to emit to `dist/`.
-2. Run database migrations against the production DB.
-3. Provide environment variables via secrets manager or `.env`.
-4. Start the server with a process manager (PM2, systemd, Docker, etc.): `node dist/server.js` or `NODE_ENV=production ts-node src/server.ts`.
-5. Schedule `node cleanup.js` periodically (e.g., cron) to purge stale sessions.
-6. Monitor logs for OCR/LLM errors and recall cache refresh messages.
+`.github/workflows/backend-ci.yml` runs on every push and pull request to `main`: it installs dependencies, runs `npm test`, and runs `npm run build`.
 
-## 9. API Docs 
+`.github/workflows/deploy.yml` runs on every push to `main`. After tests pass, it deploys over SSH to an EC2 instance: pulling the latest code, installing dependencies, running `npx prisma migrate deploy`, rebuilding, and restarting the app with PM2.
 
-| Method | Endpoint | Description | Request Body | Success Response |
-| --- | --- | --- | --- | --- |
-| `POST` | `/api/receipts/` | Create a receipt session, upload image. | `multipart/form-data` with `file` (image). | `201` JSON of created session (`id`, timestamps). |
-| `GET` | `/api/receipts/:id` | Fetch a specific receipt session. | n/a | `200` session JSON (includes `purchasedItems`, `recallMatches`, error fields). |
-| `DELETE` | `/api/receipts/:id` | Delete a receipt session. | n/a | `200` `{ "message": "Deleted the receipt session" }`. |
-| `POST` | `/api/receipts/:id/check-recalls` | Compare parsed items with cached recalls, update session. | JSON: none (session must already have `purchasedItems`). | `200` `{ "message": "session updated", "updatedMatches": { ... } }`. |
-| `GET` | `/api/recalls/sample` | Return the latest filtered recalls (≤40 recent items). | n/a | `200` array of recall objects (`id`, `title`, `category`, `date`). |
-| `POST` | `/api/product-check` | Identify a product from image and check against active recalls. | `multipart/form-data` with `file` (image). | `200` `{ product, verdict, matches }`. |
-| `GET` | `/health` | Service health check. | n/a | `200 { "status": "ok", "message": "The server is running" }`. |
+To build and run manually:
 
-Errors follow the JSON `{ "error": "message" }` pattern with appropriate HTTP status codes.
+```bash
+npm run build
+npm start
+```
 
+Then schedule `node cleanup.js` to run periodically (for example, via cron) to purge stale sessions.
 
-## 10. Troubleshooting
+> This repo also contains a `terraform/` directory targeting Azure. See [open questions](#open-questions) — it's unclear whether that infrastructure is the current deployment target or work in progress.
 
-- **OCR errors** – Ensure `GOOGLE_APPLICATION_CREDENTIALS` points to a valid Vision JSON key and the API is enabled.
-- **LLM failures** – Verify `OPEN_AI_API_KEY` has quota; the backend logs will surface OpenAI error messages.
-- **Database connection issues** – Confirm `DATABASE_URL` matches your PostgreSQL instance and run `npx prisma migrate deploy`.
-- **Recall fetch failures** – The Health Canada feed requires outbound HTTPS access; check firewall rules and watch server logs for fetch errors.
-- **Cache not updating** – `node-cache` TTL is 6 hours; restart the server or call `recallService.setRecallsInCache()` manually if data is stale.
+## Troubleshooting
 
+| Symptom | Likely cause / fix |
+| --- | --- |
+| OCR requests fail | `GOOGLE_APPLICATION_CREDENTIALS` doesn't point to a valid key, or the Vision API isn't enabled on the project. |
+| LLM requests fail | `OPEN_AI_API_KEY` is missing, invalid, or out of quota. Check server logs for the OpenAI error message. |
+| Database connection errors | `DATABASE_URL` doesn't match your PostgreSQL instance. Run `npx prisma migrate deploy` to apply pending migrations. |
+| Recall fetch fails | The server needs outbound HTTPS access to the Health Canada feed. Check firewall rules and server logs. |
+| Recall data looks stale | The cache TTL is 6 hours. Restart the server to force a refetch. |
 
-## 11. Author
+## Contributing
 
-Ekamsingh Bhatia — https://ekamsingh.ca
+Issues and pull requests are welcome. Before opening a PR, run `npm test` and `npm run build` locally to make sure the CI checks will pass.
 
+## License
 
+`package.json` declares the `ISC` license, but the repository does not currently include a `LICENSE` file. Add one before treating this project as licensed for external use.
+
+## Contact
+
+[Ekamsingh Bhatia](https://ekamsingh.ca)
+
+## Open Questions
+
+- **Node.js version**: `backend-ci.yml` tests against Node 20.x, `deploy.yml` deploys with Node 22. There's no `engines` field in `package.json`. Which version should contributors target?
+- **Deployment target**: `deploy.yml` deploys to an EC2 instance via SSH, but the repo also contains a `terraform/` directory provisioning Azure resources, and a branch named `azure-jenkins-cicd`. Is the project migrating from EC2 to Azure, and is Jenkins expected to replace the GitHub Actions deploy workflow?
+- **License**: `package.json` lists `ISC`, but no `LICENSE` file exists. Is `ISC` the intended license?
+- **Package name vs. repo name**: `package.json` names the project `reciept-recall` (and the local folder matches), while the GitHub repository is `receipt-check`. Should these be aligned?
